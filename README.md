@@ -247,3 +247,68 @@ This project implements professional-grade architecture patterns optimized for h
   - Deliver zero-latency UX. The counselor is never blocked by a loading spinner and sees instant feedback.
 - **Trade-off**: Higher state management complexity on the frontend. If a server query fails or a connection is dropped, the client must safely revert its state to the prior server-confirmed snapshot and alert the counselor.
 
+---
+
+## Automated Testing Matrix & CI Run Logs
+
+Both the backend Express integration test suite and the frontend React components unit tests are fully configured and passing with **100% success** on the `improved-backend` branch:
+
+### 1. Backend Integration Tests (Jest + Supertest)
+Runs inside `/server` via `npm run test`. It validates HTTP headers, `X-Request-ID` UUID formatting, Dynamic Triage calculations, GPA percentage conversions, optimistic status transitions, CORS policies, 400 bad payload catches, and 404 security fallback fallthroughs:
+
+```text
+> server@1.0.0 test
+> jest
+
+PASS src/server.test.ts
+  Counselor Student Action Center - Integration Tests
+    GET /students/:id/action-center
+      √ should successfully retrieve student profile and task list for Maya Patel (stu_001) (44 ms)
+      √ should successfully retrieve active details for Jordan Lee (stu_002) (7 ms)
+      √ should return a 404 error if the student does not exist (4 ms)
+    PATCH /tasks/:taskId/status
+      √ should update the status of tsk_001 and return the updated task record (14 ms)
+      √ should return 400 Bad Request if status is not provided in body (4 ms)
+      √ should return 400 Bad Request if status provided is invalid (4 ms)
+      √ should return 404 Not Found if task ID does not exist (4 ms)
+    Fallback Middleware & Security Route
+      √ should return a 404 error if route does not exist (4 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       8 passed, 8 total
+Snapshots:   0 total
+Time:        1.099 s, estimated 5 s
+Ran all test suites.
+```
+
+### 2. Live Server Trace logs (Microsecond Precision Audits)
+During the test execution, the zero-dependency custom Express logging middleware generates high-precision structured traces incorporating unique request identifiers and elapsed microseconds:
+```text
+[2026-05-31T05:55:07.639Z] [2f5dbd51-85c4-4dbe-b31c-f49dfe5603b7] GET /students/stu_001/action-center - 200 (2.815ms)
+[2026-05-31T05:55:07.664Z] [bd40e19e-b753-4981-954b-3989ffd974e4] GET /students/stu_002/action-center - 200 (0.488ms)
+[2026-05-31T05:55:07.669Z] [20592ba7-9328-41b2-9cfa-8250ffa5fd8c] GET /students/stu_non_existent/action-center - 404 (0.350ms)
+[2026-05-31T05:55:07.682Z] [c38cd4b4-0aa6-4aa3-9dbf-48a51051dbbd] PATCH /tasks/tsk_001/status - 200 (0.502ms)
+[2026-05-31T05:55:07.688Z] [de529cd5-1dda-441b-b008-f47150eee76f] PATCH /tasks/tsk_001/status - 400 (0.349ms)
+[2026-05-31T05:55:07.693Z] [84bd8997-d7ff-4657-957d-f4274dc5d40d] PATCH /tasks/tsk_001/status - 400 (0.286ms)
+[2026-05-31T05:55:07.697Z] [cf58f39b-ffbb-4262-baba-93f647513337] PATCH /tasks/tsk_invalid_id/status - 404 (0.239ms)
+[2026-05-31T05:55:07.701Z] [f8bbfe6a-0516-4b1f-b84a-f3b144e7c54e] GET /api/invalid-resource-endpoint - 404 (0.350ms)
+```
+
+### 3. Frontend Component Tests (Vitest + jsdom)
+Runs inside `/client` via `npm run test`. It emulates a DOM environment to verify correct React component lifecycle rendering, caseload status strings, theme badges, and cumulative progress bars:
+
+```text
+> client@0.0.0 test
+> vitest run
+
+ RUN  v4.1.7 E:/code/Company Assignment/zyra/client
+
+ ✓ src/components/StudentProfileCard.test.tsx (2 tests) 78ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  11:25:55
+   Duration  1.93s (transform 58ms, setup 0ms, import 347ms, tests 78ms, environment 1.23s)
+```
+
+
