@@ -90,6 +90,12 @@ graph TD
 
 ---
 
+## Screenshots
+<img width="2656" height="2812" alt="Image" src="https://github.com/user-attachments/assets/44a7eeb0-502e-45ae-b717-61e9d818b4cf" />
+<img width="2656" height="2812" alt="Image" src="https://github.com/user-attachments/assets/bce4cef0-dc6c-4312-bb5e-2c7f06078122" />
+
+---
+
 ## Getting Started
 
 ### Prerequisites
