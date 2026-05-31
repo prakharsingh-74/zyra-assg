@@ -16,7 +16,6 @@ export const App: React.FC = () => {
     return saved === 'light' ? 'light' : 'dark';
   });
 
-  // Sync theme class with body element and persist choice
   useEffect(() => {
     if (theme === 'light') {
       document.body.classList.add('light-mode');
@@ -26,7 +25,6 @@ export const App: React.FC = () => {
     localStorage.setItem('zyra-theme', theme);
   }, [theme]);
 
-  // Fetch student profile & tasks from the backend action center
   const fetchStudentData = useCallback(async (studentId: string) => {
     setIsLoading(true);
     setError(null);
@@ -46,23 +44,19 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // Fetch data on initial load and when selected student changes
+  // Fetch data on initial load
   useEffect(() => {
     fetchStudentData(selectedStudentId);
   }, [selectedStudentId, fetchStudentData]);
 
-  // Handle task status update with optimistic UI state changes & rollback support
   const handleUpdateTaskStatus = async (taskId: string, newStatus: TaskStatus) => {
-    // 1. Save original tasks state for a potential rollback
     const originalTasks = [...tasks];
 
-    // 2. Perform optimistic state update for instantaneous response in the UI
     const updatedTasks = tasks.map((task) =>
       task.id === taskId ? { ...task, status: newStatus } : task
     );
     setTasks(updatedTasks);
 
-    // Optimistically update student urgency badge locally matching backend server classification rules
     const originalStudent = student ? { ...student } : null;
     if (student) {
       const today = new Date('2026-05-30');
@@ -88,7 +82,6 @@ export const App: React.FC = () => {
     }
 
     try {
-      // 3. Make patch call to Express backend
       const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/status`, {
         method: 'PATCH',
         headers: {
@@ -101,16 +94,13 @@ export const App: React.FC = () => {
         throw new Error(`Server failed to update task status: ${response.status}`);
       }
 
-      // Read finalized task from server response
       const updatedTaskFromServer = await response.json();
 
-      // Sync local state with final server values
       setTasks((prevTasks) =>
         prevTasks.map((t) => (t.id === taskId ? updatedTaskFromServer : t))
       );
     } catch (err: any) {
       console.error('Status patch error, rolling back state:', err);
-      // Rollback to original states if API call fails
       setTasks(originalTasks);
       setStudent(originalStudent);
       alert(`Error updating task status. Reverting changes. Details: ${err.message}`);
