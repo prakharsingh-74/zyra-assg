@@ -212,3 +212,38 @@ All endpoints support standard CORS and process standard JSON payloads.
   "updatedAt": "2026-05-31T04:10:00Z"
 }
 ```
+
+---
+
+## Production Quality: Performance Decisions & Trade-offs
+
+This project implements professional-grade architecture patterns optimized for high legibility, performance, security, and verification speed:
+
+### 1. Decoupling Express Router Initialization from Port Bindings
+- **Decision**: Split the server codebase into `app.ts` (sets up middleware, body parsers, routes, and error catchers) and `server.ts` (starts the actual HTTP socket listener).
+- **Performance Benefits**: 
+  - Prevents port-binding collisions ("Address already in use") during parallel test execution.
+  - Allows `Supertest` to query our Express router entirely in-memory without initiating a real TCP network loop. This results in integration tests that execute in milliseconds and simplifies setting up CI/CD pipelines.
+- **Trade-off**: Requires a small code organization overhead, but makes the backend 100% testable and modular.
+
+### 2. High-Precision Zero-Dependency Logger & Request Tracking
+- **Decision**: Implemented a custom Express request logging middleware using Node's native `crypto.randomUUID()` and `process.hrtime()`, rather than dragging in heavy logging platforms (like Winston or Bunyan).
+- **Performance Benefits**:
+  - Eliminates external npm package bloat, keeping the microservice small.
+  - Utilizes `process.hrtime` (high-resolution process time) which is immune to system clock drifts, measuring execution times down to nanosecond precision.
+  - Sets the response header `X-Request-ID` to easily map client requests to server-side exceptions during log analysis.
+- **Trade-off**: For multi-node microservice setups, an industrial aggregator (like ELK Stack or Datadog) would be linked later, but this custom middleware provides the exact hooks needed for standard structured log streams.
+
+### 3. Real-Time Dynamic Triage Engine vs. Database Materialization
+- **Decision**: Calculated the student `urgencyLevel` badge (`Critical`, `Medium`, `Low`) dynamically inside route handlers at the time of query, rather than writing a static column to the database.
+- **Performance Benefits**:
+  - Avoids "write amplification": Storing triage state statically would require complex, slow database write transactions every time a task status is changed or a message is read. 
+  - Offloading calculations to fast CPU memory operations keeps our data layer normalized and light.
+- **Trade-off**: If our active caseload grows to millions of students, live-calculating over massive nested arrays during search queries could trigger CPU spikes. To scale this, we would introduce database index scans, pre-computed cache stores (like Redis), or PostgreSQL materialized views.
+
+### 4. Client-Side Optimistic Rendering & Rollbacks
+- **Decision**: Made all task status transitions optimistic on the client dashboard, immediately recalculating urgency badges in the browser context before the server responds to the `PATCH` request.
+- **Performance Benefits**:
+  - Deliver zero-latency UX. The counselor is never blocked by a loading spinner and sees instant feedback.
+- **Trade-off**: Higher state management complexity on the frontend. If a server query fails or a connection is dropped, the client must safely revert its state to the prior server-confirmed snapshot and alert the counselor.
+
